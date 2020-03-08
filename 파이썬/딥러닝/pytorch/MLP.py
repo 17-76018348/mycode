@@ -1,3 +1,15 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+from tqdm import trange
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+from torchvision import datasets, transforms
+from torchvision.datasets import MNIST
+from torch.utils.data import Dataset, DataLoader
 def cuda():
     if torch.cuda.is_available():
         device = torch.device('cuda')

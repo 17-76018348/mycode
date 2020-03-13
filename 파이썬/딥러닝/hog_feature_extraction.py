@@ -1,3 +1,24 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+import math
+from tqdm import trange
+import random
+
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+
+
+
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+else:
+    device = torch.device('cpu')
+    
+    
 def zero_padding(pad_size, img):
     input_y = len(img)
     input_x = len(img[0])
@@ -10,6 +31,7 @@ def zero_padding(pad_size, img):
 
 def set_histogram(mag, ang):
     hist = np.zeros(shape = 10, dtype = float)
+    # 0 20 40 60 80 100 120 140 160 + (180) 
     for cnt in range(9):
         idx = np.where(ang < (cnt + 1) * 20)
         tmp2 = (ang[idx] - cnt * 20)/((cnt + 1) * 20)
@@ -18,7 +40,7 @@ def set_histogram(mag, ang):
         tmp1 *= mag[idx]
         hist[cnt] += np.sum(tmp1)
         hist[cnt+1] += np.sum(tmp2)
-        ang[idx] = 300
+        ang[idx] = 300 # not to be detected after
     hist[0] += hist[9]
     return hist[:9]
 
@@ -49,7 +71,7 @@ def hist_normalize(histogram, bat_h,bat_w):
 
 
 
-def plot_hist(hist):
+def plot_hist(hist, height, width):
     ## shape = [49][9] 
     cell_num, angs  = hist.shape
     # hist[0] 먼저 plot
@@ -57,14 +79,14 @@ def plot_hist(hist):
     cnt = 0
     # shape = [9]
     # plt.figure(figsize = (20,20))
-    fig, ax = plt.subplots(nrows = 7, ncols = 7, sharex = True, sharey = True, figsize = (10,10))
-    for h in range(7):
-        for w in range(7):
+    fig, ax = plt.subplots(nrows = height, ncols = width, sharex = True, sharey = True, figsize = (10,10))
+    for h in range(height):
+        for w in range(width):
             for idx, val in enumerate(hist[cnt]):
                 x = np.linspace(-2, 2,50)
 
-                if val > 0.4:
-                    line = ax[h][w].plot(x, np.tan(idx * 20 * np.pi / 180) * x)
+                if val > 0.2:
+                    line = ax[h][w].plot(x, np.tan((idx * 20 + 90) * np.pi / 180) * x)
                     
                     plt.setp(line, color = 'r', linewidth = 2.0 * val )
                     ax[h][w].axis('off')
@@ -73,6 +95,17 @@ def plot_hist(hist):
 
             cnt += 1
     plt.show()
+    
+        
+
+    
+    
+    
+    
+    
+
+
+
 
 
 class Gradient():
@@ -122,7 +155,6 @@ class Gradient():
         for y in range(int(self.in_y/self.bat_y)):
             for x in range(int(self.in_x/self.bat_x)):
                 img = input[y * self.bat_y: (y+1) * self.bat_y,x * self.bat_x: (x+1) * self.bat_x]
-                # img = zero_padding(2,img)
                 self.set_grad(img)
                 self.grad_mag = self.set_grad_mag()
                 self.grad_ang = self.set_grad_ang()
@@ -130,32 +162,129 @@ class Gradient():
         self.histogram = np.array(self.histogram)
         self.histogram = self.histogram.reshape((int(self.in_y/self.bat_y), int(self.in_x/self.bat_x),9))
         return self.histogram
-    
 
-def main():
+class Hog_MLP(nn.Module):
+    def __init__(self, p):
+        super(Hog_MLP, self).__init__()
+        self.model = nn.Sequential(
+                # nn.Dropout(p = p),
+                nn.Linear(49 * 9,256),
+                nn.ReLU(),
+                # nn.Dropout(p = p),
+                nn.Linear(256,64),
+                nn.ReLU(),
+
+                nn.Linear(64,10),
+                nn.LogSoftmax(dim = 1)
+            )
+        
+        
+    def forward(self, x):
+        x = self.model(x)
+        return x
+
+def load_data():
     data_x = np.load('./Sign-language-digits-dataset/X.npy')
     data_y = np.load('./Sign-language-digits-dataset/Y.npy')
     padding = 0
     stride = 1
     batch = (8,8)
-    input = data_x[1]
-    
-    plt.imshow(input)
     
     
-    grad = Gradient(input = input, pad = padding, stride = stride)
-    histogram  = grad.auto()
+    shuffle_idx = np.arange(data_x.shape[0])
+    np.random.shuffle(shuffle_idx)    # shuffle data
+    
+    data_x = data_x[shuffle_idx]    
+    data_y = data_y[shuffle_idx]
     
     
-    hist_normalized = hist_normalize(histogram,2,2)
     
     
-    plot_hist(hist_normalized)
     
+def cal_histogram():
+    hist_list = []
     
-def plot_mag_ang():
-    fig, ax = plt.subplots(4,1,figsize = (30,30))
-    ax[0].imshow(grad_mag,'gray')
-    ax[1].imshow(grad_ang,'gray')
-    ax[2].imshow(grad_mag_2,'gray')
-    ax[3].imshow(grad_ang_2,'gray')
+    for idx, img in enumerate(data_x):
+        input = img
+        grad = Gradient(input = input, pad = padding, stride = stride)
+        histogram  = grad.auto()
+        hist_normalized = hist_normalize(histogram,2,2)
+        hist_list.append(hist_normalized)
+        if idx % 100 == 0:
+            print(idx)
+    hist_list = torch.tensor(hist_list, dtype = torch.float)
+
+
+def one_hot_decoding():
+    data_y =  np.argmax(data_y, axis = 1)
+    data_y = torch.tensor(data_y, dtype = torch.long).view(-1,1)
+
+
+
+def hyper_parameter():
+    
+    epochs = 30
+    
+    lr = 0.001
+    cnt = 0
+    loss_list = []
+    val_acc_list = []
+    
+    model = Hog_MLP(p = 0).to(device)
+    criterion = nn.NLLLoss()
+    optimizer = optim.Adam(model.parameters(),lr = lr)
+    
+    train_x = hist_list[ :1800,: ,: ]     # 90% train 10% val
+    test_x = hist_list[1800: ,: ,:]
+    train_y = data_y[:1800,: ]
+    test_y = data_y[1800: ,: ]
+    
+def train():
+    for epoch in trange(epochs):
+        model.train()
+        loss_epoch = 0
+        for step, hist in enumerate(train_x):
+            # print(train_x.shape)
+            # print(hist.shape)
+            print(hist.shape)
+            hist = hist.view(-1,49 * 9).to(device) # 49 * 9 image normalied hist size
+            label = train_y[step].to(device)
+            print(hist.shape)
+            pred = model(hist)
+            optimizer.zero_grad()
+            # print(pred.shape)
+            # 1 10
+            # print(label.shape)
+            # 1
+            loss = criterion(pred,label)
+            loss_epoch += loss.item() * pred.shape[0]
+            loss.backward()
+            optimizer.step()
+        loss_epoch /= len(train_x)
+        loss_list.append(loss_epoch)
+        
+        
+        model.eval()
+        val_acc = 0
+        
+        for step, hist in enumerate(test_x):
+            hist = hist.view(-1,49*9).to(device)
+            label = test_y[step].to(device)
+            
+            pred = model(hist)
+            topv, topi = pred.topk(1, dim = 1)
+            n_correct = (topi.view(-1) == label).type(torch.int)
+            val_acc += n_correct.sum().item()
+        val_acc /= len(test_x)
+        val_acc_list.append(val_acc)
+        print(epoch, loss_epoch, val_acc)
+        
+        
+def plot():
+    fig, ax = plt.subplots(2, 1, figsize = (30, 15))
+    ax[0].plot(loss_list)
+    ax[1].plot(val_acc_list)
+    
+
+
+

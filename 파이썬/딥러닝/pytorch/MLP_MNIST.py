@@ -177,9 +177,10 @@ def train_MNIST_MLP():
         for step, (img, label) in enumerate(train_loader):
     
             img, label = img.view(-1,28*28).to(device), label.to(device)
-            print(img.shape)
+
             pred = model(img)
             optimizer.zero_grad()
+            
             loss = criterion(pred,label)
             loss_epoch += loss.item() * pred.shape[0]
             loss.backward()

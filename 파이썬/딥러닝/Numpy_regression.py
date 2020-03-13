@@ -191,7 +191,11 @@ def numpy_regression_minibatch_shuffle:
     ax.set_title(r"$\theta$")
 
 
-
+def shuffle():
+    import random
+    list = ['a','b','c','d']
+    random.shuffle(list)
+    print(list)
 
 
 # 3 input linear regression

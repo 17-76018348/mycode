@@ -10,7 +10,7 @@ int main(void)
 
     printf("i contiatins : %d\n", *((int*)p));
     printf("i contiatins : %f\n", *((float*)p));
-    printf("$dddd");
+
 
     return 0;
 

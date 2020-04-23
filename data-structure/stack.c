@@ -11,7 +11,6 @@ int main(void)
     int *chk = malloc(sizeof(int));
     chk[0] = -1;
     char tmp_data;
-
     stack = createStack(3);
     push('a',stack,chk);
     push('b',stack,chk);
@@ -27,8 +26,6 @@ int main(void)
 char* createStack(int n)
 {
     char *stack;
-    
-    
     stack = malloc(sizeof(char) * n);
     printf("스택이 생성되었습니다\n");
     return stack;
@@ -53,7 +50,6 @@ void stackPop(char *stack, int* chk)
     //isemptystack
     char data;
     printf("%c입니다\n",stack[chk[0]]);
-    
 }
 void destroyStack(char *stack)
 {

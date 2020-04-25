@@ -16,6 +16,8 @@ int main(void)
     int dec;
     printf("scan\n");
     scanf("%d",&dec);
+    
+    dec = 10;
     stack = createStack(n);
     int tmp = 0;
     int tmp2 = -1;

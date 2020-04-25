@@ -10,25 +10,26 @@ int isEmptyStack(int* stack, int* chk);
 int main(void)
 {
     int* stack;
-    int* chk = malloc(sizeof(int));
+    int* chk = (int*)malloc(sizeof(int));
     chk[0] = -1;
     int n = 10;
     int dec;
-    dec = 10;
+    printf("scan\n");
+    scanf("%d",&dec);
     stack = createStack(n);
     int tmp = 0;
     int tmp2 = -1;
     tmp = count(dec, stack, chk);
-    // printf("%d",chk[0]);
-    // tmp2 = pop(stack,chk);
-    // while(1)
-    // {
-    //     if(tmp2 == 0)
-    //     {
-    //         return 0;
-    //     }
-    //     tmp2 = pop(stack,chk);
-    // }
+
+	tmp2 = pop(stack,chk);
+	while(1)
+	{
+	 if(tmp2 == 0)
+	 {
+	     return 0;
+	 }
+	 tmp2 = pop(stack,chk);
+	}
 
 
 
@@ -36,10 +37,10 @@ int main(void)
 }
 int count(int num, int* stack, int* chk)
 {
-    printf("%d\n",num);
-    int result;
+
+    int result = -1;
     int out;
-    if(result == 0)
+    if(num == 0)
     {
         return 1;
     }
@@ -53,15 +54,13 @@ int count(int num, int* stack, int* chk)
 int* createStack(int n)
 {
     int *stack;
-    stack = malloc(sizeof(int) * n);
+    stack = (int*)malloc(sizeof(int) * n);
     printf("스택이 생성되었습니다\n");
     return stack;
 }
 void push(int target, int* stack, int* chk)
 {
-    //isfullstack
     stack[chk[0] + 1] = target;
-    printf("%d\n",stack[chk[0] + 1]);
     chk[0] += 1;
 }
 int pop(int* stack, int* chk)

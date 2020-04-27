@@ -57,7 +57,6 @@ int* createStack(int n)
 {
     int *stack;
     stack = (int*)malloc(sizeof(int) * n);
-    printf("스택이 생성되었습니다\n");
     return stack;
 }
 void push(int target, int* stack, int* chk)
@@ -69,7 +68,7 @@ int pop(int* stack, int* chk)
 {
     if(isEmptyStack(stack, chk) == 1)
     {
-        printf("끝");
+        printf("(2)");
         return 0;
     }
     int data;
